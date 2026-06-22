@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #6c63ff;
+    --accent2: #a78bfa;
+    --text: #e8eaf6;
+    --muted: #7b82a8;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --orange: #fb923c;
+    --gray: #6b7280;
+    --teal: #2dd4bf;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--accent2);
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+  .sync-status {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .sync-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted);
+    transition: background .3s;
+  }
+  .sync-dot.syncing { background: var(--yellow); animation: pulse 1s infinite; }
+  .sync-dot.synced  { background: var(--green); }
+  .sync-dot.error   { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .controls {
+    padding: 20px 32px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .add-btn {
+    margin-left: auto;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .add-btn:hover { opacity: .85; }
+  .export-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all .15s;
+  }
+  .export-btn:hover { border-color: var(--green); color: var(--green); }
+
+  .stats {
+    padding: 20px 32px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 20px;
+    min-width: 100px;
+    flex: 1;
+  }
+  .stat-num { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+  .stat-label { font-size: 10px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+
+  .view-tabs {
+    padding: 0 32px;
+    display: flex;
+    gap: 2px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .view-tab {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all .15s;
+    font-family: 'Inter', sans-serif;
+  }
+  .view-tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+  .table-wrap { padding: 0 32px 32px; display: none; }
+  .table-wrap.active { display: block; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  th {
+    text-align: left; padding: 12px 16px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+    border-bottom: 1px solid var(--border); background: var(--surface2);
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  th:hover { color: var(--accent2); }
+  td { padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(108,99,255,.05); }
+  .progress-cell { min-width: 130px; }
+  .progress-bar-bg { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .progress-bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+  .progress-label { font-size: 11px; color: var(--muted); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px;
+    font-weight: 600; white-space: nowrap;
+  }
+  .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .badge-in-progress { background: rgba(96,165,250,.15); color: var(--blue); }
+  .badge-in-progress::before { background: var(--blue); }
+  .badge-on-hold { background: rgba(251,191,36,.15); color: var(--yellow); }
+  .badge-on-hold::before { background: var(--yellow); }
+  .badge-not-started { background: rgba(107,114,128,.15); color: var(--gray); }
+  .badge-not-started::before { background: var(--gray); }
+  .badge-completed { background: rgba(52,211,153,.15); color: var(--green); }
+  .badge-completed::before { background: var(--green); }
+  .badge-evaluating { background: rgba(167,139,250,.15); color: var(--accent2); }
+  .badge-evaluating::before { background: var(--accent2); }
+  .badge-started { background: rgba(251,146,60,.15); color: var(--orange); }
+  .badge-started::before { background: var(--orange); }
+  .badge-under-review { background: rgba(45,212,191,.15); color: var(--teal); }
+  .badge-under-review::before { background: var(--teal); }
+
+  .board { padding: 0 32px 32px; display: none; gap: 16px; overflow-x: auto; }
+  .board.active { display: flex; }
+  .board-col { min-width: 250px; flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .board-header { padding: 14px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .board-count { margin-left: auto; background: var(--surface2); border-radius: 10px; padding: 2px 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .board-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
+  .board-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: border-color .15s; }
+  .board-card:hover { border-color: var(--accent); }
+  .board-card-title { font-weight: 500; font-size: 13px; margin-bottom: 6px; }
+  .board-card-sub { font-size: 11px; color: var(--muted); }
+
+  .parent-toggle { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 11px; padding: 2px 4px; margin-right: 4px; transition: transform .2s; display: inline-block; line-height: 1; vertical-align: middle; }
+  .parent-toggle.collapsed { transform: rotate(-90deg); }
+  tr.child-row.hidden { display: none; }
+  .has-children-badge { font-size: 10px; background: rgba(108,99,255,.2); color: var(--accent2); border-radius: 4px; padding: 1px 5px; margin-left: 6px; font-weight: 500; }
+  .sub-tag { font-size: 10px; background: rgba(108,99,255,.2); color: var(--accent2); border-radius: 4px; padding: 2px 6px; margin-left: 6px; font-weight: 500; }
+  .parent-name-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sub-indent { padding-left: 36px !important; }
+
+  .date-start { font-size: 11px; color: var(--muted); }
+  .date-update { font-size: 11px; color: var(--muted); }
+  .date-due { font-size: 10px; color: var(--orange); }
+  .date-stack { line-height: 1.7; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 540px; max-width: 96vw; max-height: 92vh; overflow-y: auto; padding: 28px; }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-row label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+  .form-row.full { grid-column: 1 / -1; }
+  .form-row input, .form-row select, .form-row textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; padding: 9px 12px; outline: none; transition: border-color .15s; }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: var(--accent); }
+  .form-row textarea { resize: vertical; min-height: 65px; }
+  .form-row select option { background: var(--surface); }
+  .form-row input[type=range] { padding: 4px 0; accent-color: var(--accent); cursor: pointer; }
+  .range-row { display: flex; align-items: center; gap: 10px; }
+  .range-display { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent2); min-width: 36px; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .btn-cancel { padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; }
+  .btn-cancel:hover { color: var(--text); }
+  .btn-save { padding: 9px 22px; border-radius: 8px; border: none; background: var(--accent); color: #fff; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; }
+  .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-delete { padding: 9px 14px; border-radius: 8px; border: 1px solid rgba(248,113,113,.3); background: transparent; color: var(--red); cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; margin-right: auto; }
+  .btn-delete:hover { background: rgba(248,113,113,.1); }
+  .action-icon { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px 6px; border-radius: 4px; font-size: 14px; transition: color .15s; }
+  .action-icon:hover { color: var(--accent2); }
+
+  /* Loading overlay */
+  .loading-overlay {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 500; gap: 16px;
+  }
+  .loading-overlay.hidden { display: none; }
+  .loading-spinner {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted); }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--green); color: var(--green); padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 999; transform: translateY(80px); opacity: 0; transition: all .3s; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Loading projects...</div>
+</div>
+
+<header>
+  <div class="logo"><span>//</span> Project Tracker</div>
+  <div class="sync-status">
+    <div class="sync-dot" id="syncDot"></div>
+    <span id="syncLabel">Loading…</span>
+  </div>
+</header>
+
+<div class="controls">
+  <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+  <button class="filter-btn" onclick="setFilter('In Progress', this)">In Progress</button>
+  <button class="filter-btn" onclick="setFilter('Under Review', this)">Under Review</button>
+  <button class="filter-btn" onclick="setFilter('On Hold', this)">On Hold</button>
+  <button class="filter-btn" onclick="setFilter('Not Started', this)">Not Started</button>
+  <button class="filter-btn" onclick="setFilter('Completed', this)">Completed</button>
+  <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+  <button class="add-btn" onclick="openModal()">+ Add Project</button>
+</div>
+
+<div class="stats" id="statsRow"></div>
+
+<div class="view-tabs">
+  <button class="view-tab active" onclick="setView('table', this)">Table</button>
+  <button class="view-tab" onclick="setView('board', this)">Status Board</button>
+</div>
+
+<div class="table-wrap active" id="tableView">
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortBy('name')">Project ↕</th>
+        <th onclick="sortBy('assignee')">Assignee ↕</th>
+        <th onclick="sortBy('status')">Status ↕</th>
+        <th class="progress-cell">Progress</th>
+        <th onclick="sortBy('startDate')">Start Date ↕</th>
+        <th onclick="sortBy('lastUpdate')">Last Update ↕</th>
+        <th>Notes</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div class="board" id="boardView">
+  <div class="board-col">
+    <div class="board-header" style="color:var(--gray)">⬜ Not Started <span class="board-count" id="k-not-started">0</span></div>
+    <div class="board-body" id="kc-not-started"></div>
+  </div>
+  <div class="board-col">
+    <div class="board-header" style="color:var(--orange)">▶ Started <span class="board-count" id="k-started">0</span></div>
+    <div class="board-body" id="kc-started"></div>
+  </div>
+  <div class="board-col">
+    <div class="board-header" style="color:var(--blue)">🔵 In Progress <span class="board-count" id="k-in-progress">0</span></div>
+    <div class="board-body" id="kc-in-progress"></div>
+  </div>
+  <div class="board-col">
+    <div class="board-header" style="color:var(--teal)">🔍 Under Review <span class="board-count" id="k-under-review">0</span></div>
+    <div class="board-body" id="kc-under-review"></div>
+  </div>
+  <div class="board-col">
+    <div class="board-header" style="color:var(--accent2)">💡 Evaluating <span class="board-count" id="k-evaluating">0</span></div>
+    <div class="board-body" id="kc-evaluating"></div>
+  </div>
+  <div class="board-col">
+    <div class="board-header" style="color:var(--yellow)">⏸ On Hold <span class="board-count" id="k-on-hold">0</span></div>
+    <div class="board-body" id="kc-on-hold"></div>
+  </div>
+  <div class="board-col">
+    <div class="board-header" style="color:var(--green)">✅ Completed <span class="board-count" id="k-completed">0</span></div>
+    <div class="board-body" id="kc-completed"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">New Project</div>
+    <div class="form-grid">
+      <div class="form-row full">
+        <label>Project Name</label>
+        <input type="text" id="fName" placeholder="e.g. Dashboard Redesign">
+      </div>
+      <div class="form-row full">
+        <label>Parent Project (optional)</label>
+        <select id="fParent"><option value="">— None (top-level) —</option></select>
+      </div>
+      <div class="form-row">
+        <label>Assignee</label>
+        <input type="text" id="fAssignee" placeholder="e.g. Nathaniel">
+      </div>
+      <div class="form-row">
+        <label>Status</label>
+        <select id="fStatus">
+          <option>Not Started</option>
+          <option>Started</option>
+          <option>In Progress</option>
+          <option>Under Review</option>
+          <option>Evaluating</option>
+          <option>On Hold</option>
+          <option>Completed</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Start / Assignment Date</label>
+        <input type="date" id="fStartDate">
+      </div>
+      <div class="form-row">
+        <label>Last Update</label>
+        <input type="date" id="fLastUpdate">
+      </div>
+      <div class="form-row">
+        <label>Due Date (optional)</label>
+        <input type="date" id="fDueDate">
+      </div>
+      <div class="form-row">
+        <label>Progress — <span id="progressVal">0</span>%</label>
+        <div class="range-row">
+          <input type="range" id="fProgress" min="0" max="100" value="0" style="flex:1" oninput="document.getElementById('progressVal').textContent=this.value">
+        </div>
+      </div>
+      <div class="form-row full">
+        <label>Notes</label>
+        <textarea id="fNotes" placeholder="Notes, blockers, context…"></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-delete" id="btnDelete" style="display:none" onclick="deleteProject()">Delete</button>
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="btnSave" onclick="saveProject()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbzKQLwK_Lwb70mzHWiixvcWglJB5zuV7qhyTLOPG_BhQWRF1VJJzVZ8wzXvqGpq8vStvg/exec';
+
+let projects = [];
+let nextId = 1;
+let currentFilter = 'all';
+let currentSort = { key: null, asc: true };
+let editingId = null;
+let collapsed = new Set();
+
+// ─── SYNC STATUS ─────────────────────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot ' + state;
+  lbl.textContent = label;
+}
+
+// ─── LOAD FROM GOOGLE SHEET ───────────────────────────────────────────────────
+async function loadProjects() {
+  setSyncStatus('syncing', 'Loading…');
+  try {
+    const res = await fetch(API);
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      // Sheet is empty — seed with defaults
+      projects = getDefaultProjects();
+      await pushToSheet();
+    } else {
+      projects = rows.map(r => ({
+        id:         parseInt(r.id) || 0,
+        name:       r.name || '',
+        parentId:   r.parentId === '' || r.parentId === null || r.parentId === undefined ? null : parseInt(r.parentId),
+        assignee:   r.assignee || '',
+        status:     r.status || 'Not Started',
+        progress:   parseInt(r.progress) || 0,
+        startDate:  r.startDate || '',
+        lastUpdate: r.lastUpdate || '',
+        dueDate:    r.dueDate || '',
+        notes:      r.notes || '',
+      }));
+    }
+    nextId = projects.length > 0 ? Math.max(...projects.map(p => p.id)) + 1 : 1;
+    setSyncStatus('synced', 'Synced');
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    render();
+  } catch (err) {
+    setSyncStatus('error', 'Connection error');
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    showToast('Could not load from Google Sheets', true);
+    render();
+  }
+}
+
+// ─── PUSH TO GOOGLE SHEET ─────────────────────────────────────────────────────
+async function pushToSheet() {
+  setSyncStatus('syncing', 'Saving…');
+  try {
+    await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'save', projects }),
+    });
+    setSyncStatus('synced', 'Saved ✓');
+    setTimeout(() => setSyncStatus('synced', 'Synced'), 2000);
+  } catch (err) {
+    setSyncStatus('error', 'Save failed');
+    showToast('Could not save — check connection', true);
+  }
+}
+
+// ─── DEFAULT DATA (seeds the sheet on first load) ─────────────────────────────
+function getDefaultProjects() {
+  return [
+    { id:1,  name:'Attom',                             parentId:null, assignee:'Nathaniel',                   status:'In Progress',  progress:40, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'Nathaniel is reviewing the data.' },
+    { id:2,  name:'Enformion',                         parentId:null, assignee:'Francisco',                   status:'On Hold',      progress:20, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'Francisco is currently working on the Monday.com data migration.' },
+    { id:3,  name:'New Work Flow Update',              parentId:null, assignee:'Melanie',                     status:'Not Started',  progress:0,  startDate:'2025-06-19', lastUpdate:'2025-06-19', dueDate:'',           notes:'Add Melanie into the workflow.' },
+    { id:4,  name:'Letters Automation',                parentId:null, assignee:'Francis',                     status:'In Progress',  progress:30, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'Francis is working on this automation and evaluating tools for this workflow.' },
+    { id:5,  name:'Taxes Paid',                        parentId:null, assignee:'Ezra',                        status:'In Progress',  progress:45, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'Ezra already started working with the data.' },
+    { id:6,  name:'Dashboard',                         parentId:null, assignee:'',                            status:'In Progress',  progress:35, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'Still working on building the dashboard and adding more details.' },
+    { id:7,  name:'WA Driver',                         parentId:null, assignee:'',                            status:'Started',      progress:10, startDate:'2025-06-19', lastUpdate:'2025-06-19', dueDate:'',           notes:'Job post made, waiting for applicants.' },
+    { id:8,  name:'Drip Campaign',                     parentId:null, assignee:'',                            status:'Started',      progress:15, startDate:'2025-06-19', lastUpdate:'2025-06-19', dueDate:'',           notes:'Investigating options.' },
+    { id:9,  name:'ISA Dashboard',                     parentId:null, assignee:'',                            status:'Not Started',  progress:0,  startDate:'2025-06-19', lastUpdate:'2025-06-19', dueDate:'',           notes:'Finalizing Executive dashboard.' },
+    { id:10, name:'Salesforce',                        parentId:null, assignee:'',                            status:'In Progress',  progress:25, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'Multiple active sub-items.' },
+    { id:11, name:'Name displayed on dialer',          parentId:10,   assignee:'',                            status:'In Progress',  progress:50, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'' },
+    { id:12, name:'SendGrid',                          parentId:10,   assignee:'',                            status:'On Hold',      progress:5,  startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'On hold due to the amount of hours needed from developers.' },
+    { id:13, name:'Email Tracking',                    parentId:10,   assignee:'',                            status:'Not Started',  progress:0,  startDate:'2025-06-19', lastUpdate:'2025-06-19', dueDate:'',           notes:'Connect Gmail to SF and receive responses.' },
+    { id:14, name:'Copilot',                           parentId:10,   assignee:'',                            status:'Not Started',  progress:0,  startDate:'2025-06-19', lastUpdate:'2025-06-19', dueDate:'',           notes:'Read all files and provide a summary of Data teams info and PIs info to the agent.' },
+    { id:15, name:'Messaging Box',                     parentId:10,   assignee:'',                            status:'In Progress',  progress:40, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'' },
+    { id:16, name:'Trello – Google Calendar Connector',parentId:null, assignee:'',                            status:'In Progress',  progress:30, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'',           notes:'Google Calendar connector with reminders for DAO.' },
+    { id:17, name:'Claude MCP for Proof',              parentId:null, assignee:'',                            status:'Evaluating',   progress:10, startDate:'2025-06-19', lastUpdate:'2025-06-19', dueDate:'',           notes:'Evaluating stage.' },
+    { id:18, name:'Tax Delinquent Automation',         parentId:null, assignee:'Nathaniel',                   status:'Not Started',  progress:0,  startDate:'2025-06-19', lastUpdate:'2025-06-19', dueDate:'',           notes:'Nathaniel will work with Claude to provide an automation to update leads with no human element.' },
+    { id:19, name:"Nathaniel's Role/Task Description", parentId:null, assignee:'Nathaniel',                   status:'In Progress',  progress:60, startDate:'2025-06-17', lastUpdate:'2025-06-19', dueDate:'2025-06-24', notes:'Assigned Date: Wednesday June 17.' },
+  ];
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function badgeClass(s) { return 'badge badge-' + s.toLowerCase().replace(/ /g,'-'); }
+function statusColor(s) {
+  return {'In Progress':'var(--blue)','On Hold':'var(--yellow)','Not Started':'var(--gray)',
+          'Completed':'var(--green)','Evaluating':'var(--accent2)','Started':'var(--orange)',
+          'Under Review':'var(--teal)'}[s]||'var(--muted)';
+}
+function filteredProjects() {
+  return projects.filter(p => currentFilter==='all' || p.status===currentFilter);
+}
+function formatDate(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]+' '+parseInt(day)+', '+y;
+}
+function childrenOf(id) { return projects.filter(p => p.parentId===id); }
+
+// ─── STATS ───────────────────────────────────────────────────────────────────
+function renderStats() {
+  const c={};
+  projects.forEach(p=>{ c[p.status]=(c[p.status]||0)+1; });
+  const defs=[
+    {label:'Total',num:projects.length,color:'var(--accent2)'},
+    {label:'In Progress',num:c['In Progress']||0,color:'var(--blue)'},
+    {label:'Under Review',num:c['Under Review']||0,color:'var(--teal)'},
+    {label:'On Hold',num:c['On Hold']||0,color:'var(--yellow)'},
+    {label:'Not Started',num:c['Not Started']||0,color:'var(--gray)'},
+    {label:'Completed',num:c['Completed']||0,color:'var(--green)'},
+  ];
+  document.getElementById('statsRow').innerHTML=defs.map(s=>`<div class="stat-card"><div class="stat-num" style="color:${s.color}">${s.num}</div><div class="stat-label">${s.label}</div></div>`).join('');
+}
+
+// ─── TABLE ───────────────────────────────────────────────────────────────────
+function orderWithChildren(list) {
+  const parents=list.filter(p=>!p.parentId), result=[];
+  parents.forEach(p=>{ result.push(p); list.filter(c=>c.parentId===p.id).forEach(c=>result.push(c)); });
+  list.filter(p=>p.parentId&&!result.includes(p)).forEach(p=>result.push(p));
+  return result;
+}
+function toggleCollapse(parentId) {
+  collapsed.has(parentId)?collapsed.delete(parentId):collapsed.add(parentId);
+  renderTable();
+}
+function renderTable() {
+  const fp=filteredProjects();
+  let sorted=[...fp];
+  if(currentSort.key){
+    sorted.sort((a,b)=>{let av=a[currentSort.key]||'',bv=b[currentSort.key]||'';return currentSort.asc?av.localeCompare(bv):bv.localeCompare(av);});
+  } else { sorted=orderWithChildren(sorted); }
+  let html='';
+  sorted.forEach(p=>{
+    const isChild=p.parentId!==null;
+    const parent=isChild?projects.find(x=>x.id===p.parentId):null;
+    const children=childrenOf(p.id);
+    const hasChildren=children.length>0;
+    const isCollapsed=collapsed.has(p.id);
+    const isHidden=isChild&&parent&&collapsed.has(parent.id);
+    const pc=p.progress>=75?'var(--green)':p.progress>=40?'var(--blue)':'var(--accent)';
+    const toggleBtn=hasChildren?`<button class="parent-toggle${isCollapsed?' collapsed':''}" onclick="event.stopPropagation();toggleCollapse(${p.id})" title="${isCollapsed?'Expand':'Collapse'}">▼</button>`:'';
+    const childBadge=hasChildren?`<span class="has-children-badge">${children.length} sub</span>`:'';
+    const startD=p.startDate?`<div class="date-start">📅 ${formatDate(p.startDate)}</div>`:'<div class="date-start" style="color:var(--border)">—</div>';
+    const updateD=p.lastUpdate?`<div class="date-update">🔄 ${formatDate(p.lastUpdate)}</div>`:'';
+    const dueD=p.dueDate?`<div class="date-due">⚠️ Due ${formatDate(p.dueDate)}</div>`:'';
+    html+=`<tr class="${isChild?'child-row':''} ${isHidden?'hidden':''}" onclick="openModal(${p.id})" style="cursor:pointer">
+      <td${isChild?' class="sub-indent"':''}>
+        ${toggleBtn}<span style="font-weight:${isChild?'400':'500'}">${p.name}</span>${childBadge}
+        ${isChild&&parent?`<div class="parent-name-label">↳ ${parent.name}</div>`:''}
+      </td>
+      <td style="color:${p.assignee?'var(--text)':'var(--muted)'};">${p.assignee||'—'}</td>
+      <td><span class="${badgeClass(p.status)}">${p.status}</span></td>
+      <td class="progress-cell">
+        <div class="progress-label">${p.progress}%</div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${p.progress}%;background:${pc}"></div></div>
+      </td>
+      <td>${startD}</td>
+      <td><div class="date-stack">${updateD}${dueD}</div></td>
+      <td style="color:var(--muted);max-width:200px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.notes}</td>
+      <td onclick="event.stopPropagation()"><button class="action-icon" onclick="openModal(${p.id})">✏️</button></td>
+    </tr>`;
+  });
+  document.getElementById('tableBody').innerHTML=html;
+}
+
+// ─── BOARD ───────────────────────────────────────────────────────────────────
+function renderBoard() {
+  const cols=['Not Started','Started','In Progress','Under Review','Evaluating','On Hold','Completed'];
+  const ids=['not-started','started','in-progress','under-review','evaluating','on-hold','completed'];
+  cols.forEach((col,i)=>{
+    const items=filteredProjects().filter(p=>p.status===col);
+    document.getElementById('k-'+ids[i]).textContent=items.length;
+    document.getElementById('kc-'+ids[i]).innerHTML=items.map(p=>`
+      <div class="board-card" onclick="openModal(${p.id})">
+        <div class="board-card-title">${p.name}</div>
+        ${p.assignee?`<div class="board-card-sub">👤 ${p.assignee}</div>`:''}
+        ${p.startDate?`<div class="board-card-sub" style="margin-top:3px">📅 ${formatDate(p.startDate)}</div>`:''}
+        <div style="margin-top:8px">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${p.progress}%;background:${statusColor(p.status)}"></div></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">${p.progress}%</div>
+        </div>
+      </div>`).join('');
+  });
+}
+
+function render() { renderStats(); renderTable(); renderBoard(); }
+
+// ─── FILTER / SORT / VIEW ────────────────────────────────────────────────────
+function setFilter(f,btn){
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); render();
+}
+function sortBy(key){
+  if(currentSort.key===key)currentSort.asc=!currentSort.asc;
+  else{currentSort.key=key;currentSort.asc=true;}
+  renderTable();
+}
+function setView(view,btn){
+  document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tableView').classList.toggle('active',view==='table');
+  document.getElementById('boardView').classList.toggle('active',view==='board');
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+function populateParentSelect(excludeId=null){
+  const sel=document.getElementById('fParent');
+  const top=projects.filter(p=>!p.parentId&&p.id!==excludeId);
+  sel.innerHTML='<option value="">— None (top-level) —</option>'+top.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+}
+function openModal(id=null){
+  editingId=id; populateParentSelect(id);
+  const btnDelete=document.getElementById('btnDelete');
+  if(id){
+    const p=projects.find(x=>x.id===id);
+    document.getElementById('modalTitle').textContent='Edit Project';
+    document.getElementById('fName').value=p.name;
+    document.getElementById('fParent').value=p.parentId||'';
+    document.getElementById('fAssignee').value=p.assignee;
+    document.getElementById('fStatus').value=p.status;
+    document.getElementById('fProgress').value=p.progress;
+    document.getElementById('progressVal').textContent=p.progress;
+    document.getElementById('fStartDate').value=p.startDate||'';
+    document.getElementById('fLastUpdate').value=p.lastUpdate;
+    document.getElementById('fDueDate').value=p.dueDate||'';
+    document.getElementById('fNotes').value=p.notes;
+    btnDelete.style.display='inline-block';
+  } else {
+    document.getElementById('modalTitle').textContent='New Project';
+    document.getElementById('fName').value='';
+    document.getElementById('fParent').value='';
+    document.getElementById('fAssignee').value='';
+    document.getElementById('fStatus').value='Not Started';
+    document.getElementById('fProgress').value=0;
+    document.getElementById('progressVal').textContent=0;
+    document.getElementById('fStartDate').value=new Date().toISOString().split('T')[0];
+    document.getElementById('fLastUpdate').value=new Date().toISOString().split('T')[0];
+    document.getElementById('fDueDate').value='';
+    document.getElementById('fNotes').value='';
+    btnDelete.style.display='none';
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalOutside(e){ if(e.target===document.getElementById('modalOverlay'))closeModal(); }
+
+async function saveProject(){
+  const name=document.getElementById('fName').value.trim();
+  if(!name){document.getElementById('fName').focus();return;}
+  const btn=document.getElementById('btnSave');
+  btn.disabled=true; btn.textContent='Saving…';
+  const data={
+    name,
+    parentId:document.getElementById('fParent').value?parseInt(document.getElementById('fParent').value):null,
+    assignee:document.getElementById('fAssignee').value.trim(),
+    status:document.getElementById('fStatus').value,
+    progress:parseInt(document.getElementById('fProgress').value),
+    startDate:document.getElementById('fStartDate').value,
+    lastUpdate:document.getElementById('fLastUpdate').value,
+    dueDate:document.getElementById('fDueDate').value,
+    notes:document.getElementById('fNotes').value.trim(),
+  };
+  if(editingId){
+    const idx=projects.findIndex(p=>p.id===editingId);
+    projects[idx]={...projects[idx],...data};
+    showToast('Project updated');
+  } else {
+    data.id=nextId++;
+    projects.push(data);
+    showToast('Project added');
+  }
+  render(); closeModal();
+  await pushToSheet();
+  btn.disabled=false; btn.textContent='Save';
+}
+
+async function deleteProject(){
+  if(!editingId)return;
+  projects=projects.filter(p=>p.id!==editingId&&p.parentId!==editingId);
+  render(); closeModal();
+  showToast('Project deleted');
+  await pushToSheet();
+}
+
+// ─── EXPORT ──────────────────────────────────────────────────────────────────
+function exportCSV(){
+  const headers=['Name','Parent','Assignee','Status','Progress %','Start Date','Last Update','Due Date','Notes'];
+  const rows=projects.map(p=>{
+    const par=p.parentId?(projects.find(x=>x.id===p.parentId)?.name||''):'';
+    return[p.name,par,p.assignee,p.status,p.progress,p.startDate,p.lastUpdate,p.dueDate,p.notes].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+  });
+  const csv=[headers.join(','),...rows].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='projects.csv'; a.click();
+  showToast('CSV exported');
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+function showToast(msg, isError=false){
+  const t=document.getElementById('toast');
+  t.textContent=(isError?'✗ ':'✓ ')+msg;
+  t.className='toast show'+(isError?' error':'');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+loadProjects();
+</script>
+</body>
+</html>
